@@ -1,0 +1,13 @@
+{
+  "name": "sched-prod-incident-board",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "PLAYWRIGHT_BROWSERS_PATH=.browsers node --test tests/board.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

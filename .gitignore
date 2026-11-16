@@ -1,0 +1,9 @@
+node_modules/
+.browsers/
+dist/
+test-results/
+recordings/
+.env
+.env.*
+*.credentials.json
+*-receipt.json
