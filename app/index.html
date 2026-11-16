@@ -18,6 +18,9 @@
       <p role="status" aria-live="polite"></p>
       <p role="alert"></p>
       <p data-testid="empty" hidden>No incidents tonight.</p>
+      <div class="updates-slot" aria-live="polite">
+        <button type="button" data-testid="new-bar" hidden>0 new</button>
+      </div>
       <ul data-testid="incident-list" class="list" aria-label="Tonight’s incidents"></ul>
     </main>
     <footer>sched-prod incident board · build <code data-testid="build-sha">__BUILD_SHA__</code></footer>

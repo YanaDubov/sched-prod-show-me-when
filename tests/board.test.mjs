@@ -68,15 +68,59 @@ test('Ack targets its row, uses the current cursor and survives a refresh', asyn
   assert.equal(await row.getByTestId('acked').count(), 1);
 });
 
-test('polling adds a new newest row without navigation and advances the API cursor', async t => {
+test('polling stages a new row; only the new bar applies it without navigation', async t => {
   const { page, state } = await fixture(t);
   await page.goto(origin);
   await page.getByTestId('incident-row').first().waitFor();
+  const originalIds = await page.getByTestId('incident-row').evaluateAll(rows => rows.map(row => row.dataset.id));
+  const target = page.locator('[data-id="INC-1"]').getByTestId('ack');
+  const originalBox = await target.boundingBox();
   state.incidents.push({ ...incidents[0], id: 'INC-3', openedAt: '2026-11-12T04:03:00Z' });
+  await page.getByTestId('new-bar').waitFor();
+  assert.equal(await page.getByTestId('new-bar').textContent(), '1 new');
+  assert.deepEqual(await page.getByTestId('incident-row').evaluateAll(rows => rows.map(row => row.dataset.id)), originalIds);
+  assert.deepEqual(await target.boundingBox(), originalBox, 'The bar must not shift the aimed-at button.');
+  await page.getByTestId('new-bar').click();
   await page.locator('[data-id="INC-3"]').waitFor();
   assert.equal(await page.getByTestId('incident-row').first().getAttribute('data-id'), 'INC-3');
+  assert.equal(await page.getByTestId('new-bar').isVisible(), false);
   assert.equal(state.requests[1], 'cursor-1');
   assert.equal(page.url(), origin + '/');
+});
+
+test('an actual coordinate click still acknowledges the aimed-at incident after arrivals', async t => {
+  const { page, state } = await fixture(t);
+  await page.goto(origin);
+  const row = page.locator('[data-id="INC-1"]');
+  const button = row.getByTestId('ack');
+  await button.waitFor();
+  const box = await button.boundingBox();
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(point.x, point.y);
+  state.incidents.unshift({ ...incidents[0], id: 'INC-3', openedAt: '2026-11-12T04:03:00Z' });
+  await page.getByTestId('new-bar').waitFor();
+  await page.mouse.click(point.x, point.y);
+  await row.getByTestId('acked').waitFor();
+  assert.equal(state.ackCalls[0].id, 'INC-1');
+  assert.equal(state.ackCalls[0].cursor, 'cursor-2');
+  await page.getByTestId('new-bar').click();
+  await page.locator('[data-id="INC-3"]').waitFor();
+  assert.equal(await row.getByTestId('acked').count(), 1);
+});
+
+test('the bar counts distinct unseen IDs, not polling responses, and does not update existing rows', async t => {
+  const { page, state } = await fixture(t);
+  await page.goto(origin);
+  await page.getByTestId('incident-row').first().waitFor();
+  const before = await page.getByTestId('incident-row').evaluateAll(rows => rows.map(row => row.innerText));
+  state.incidents[0].summary = 'Pending changed text';
+  state.incidents.push({ ...incidents[0], id: 'INC-3' });
+  await page.getByTestId('new-bar').waitFor();
+  state.incidents.push({ ...incidents[0], id: 'INC-4' });
+  await page.waitForFunction(() => document.querySelector('[data-testid="new-bar"]').textContent === '2 new');
+  await page.waitForResponse(response => response.url().includes('since=cursor-3'));
+  assert.equal(await page.getByTestId('new-bar').textContent(), '2 new');
+  assert.deepEqual(await page.getByTestId('incident-row').evaluateAll(rows => rows.map(row => row.innerText)), before);
 });
 
 test('empty response is distinct from loading or errors', async t => {

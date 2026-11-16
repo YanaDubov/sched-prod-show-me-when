@@ -2,7 +2,7 @@
 
 ## This implementation
 
-The four ready issues are implemented in `app/app.js`: keyed newest-first rows, incident-specific Ack using the supplied client, loading/empty/error states, a two-second poll and viewer-local dates. Rendering uses text nodes, not incident-provided HTML. Existing rows and acknowledgement state survive refreshes.
+The four ready issues are implemented in `app/app.js`: keyed rows, incident-specific Ack using the supplied client, loading/empty/error states, a two-second poll and viewer-local dates. Product's recorded-use feedback changed immediate insertion to a stable visible list: the "N new" bar stages arrivals and applies them only on click. Its layout slot is reserved so the bar itself cannot move Ack targets. Rendering uses text nodes, not incident-provided HTML. Existing rows and acknowledgement state survive refreshes and explicit insertion.
 
 Install the locked dependencies with `npm ci`, then install Chromium with `PLAYWRIGHT_BROWSERS_PATH=.browsers npx playwright install chromium`. Run `npm test` for isolated browser tests with explicitly mocked fixtures. Fixtures are not used by the public board or recordings.
 

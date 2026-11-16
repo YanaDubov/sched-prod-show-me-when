@@ -6,6 +6,7 @@ const loader = document.querySelector('[data-testid="loader"]');
 const empty = document.querySelector('[data-testid="empty"]');
 const status = document.querySelector('[role="status"]');
 const error = document.querySelector('[role="alert"]');
+const newBar = document.querySelector('[data-testid="new-bar"]');
 const rows = new Map();
 const acknowledged = new Map();
 const pending = new Set();
@@ -14,6 +15,20 @@ const localTime = new Intl.DateTimeFormat(navigator.language, {
   hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
 });
 let refreshing = false;
+let loaded = false;
+let latestIncidents = [];
+
+function updateNewBar() {
+  const newIds = new Set(latestIncidents.filter(incident => !rows.has(incident.id)).map(incident => incident.id));
+  newBar.hidden = newIds.size === 0;
+  newBar.textContent = `${newIds.size} new`;
+  newBar.setAttribute('aria-label', `Show ${newIds.size} new incidents`);
+}
+
+newBar.addEventListener('click', () => {
+  render(latestIncidents);
+  updateNewBar();
+});
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -39,7 +54,7 @@ function createRow(incident) {
     if (pending.has(incident.id) || acknowledged.has(incident.id)) return;
     pending.add(incident.id);
     button.disabled = true;
-    button.textContent = 'Acknowledging…';
+    button.textContent = 'Acking…';
     error.textContent = '';
     try {
       const reply = await ack(incident.id);
@@ -83,7 +98,7 @@ function render(incidents) {
     if (atIndex !== entry.row) list.insertBefore(entry.row, atIndex ?? null);
   }
   empty.hidden = ordered.length !== 0;
-  status.textContent = `${ordered.length} incident${ordered.length === 1 ? '' : 's'} · updates every 2 seconds`;
+  status.textContent = `${ordered.length} incident${ordered.length === 1 ? '' : 's'} · checking for updates every 2 seconds`;
 }
 
 async function refresh() {
@@ -91,7 +106,10 @@ async function refresh() {
   refreshing = true;
   try {
     const page = await fetchIncidents();
-    render(page.incidents);
+    latestIncidents = page.incidents;
+    // Product: polling updates the pending snapshot, never the on-screen rows.
+    if (!loaded) { render(latestIncidents); loaded = true; }
+    updateNewBar();
     loader.remove();
     board.setAttribute('aria-busy', 'false');
     if (error.dataset.kind === 'refresh') { error.textContent = ''; delete error.dataset.kind; }
